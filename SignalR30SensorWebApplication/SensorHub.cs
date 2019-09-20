@@ -10,12 +10,10 @@ namespace SignalR30SensorWebApplication
     public class SensorHub : Hub
     {
         private readonly SensorCollection _sensorCollection;
-        private readonly ILogger<SensorHub> _logger;
 
-        public SensorHub(SensorCollection sensorCollection, ILogger<SensorHub> logger)
+        public SensorHub(SensorCollection sensorCollection)
         {
             _sensorCollection = sensorCollection;
-            _logger = logger;
         }
 
         public IEnumerable<string> GetSensorNames()
@@ -34,7 +32,6 @@ namespace SignalR30SensorWebApplication
             {
                 await foreach (var measurement in sensorData)
                 {
-                    _logger.LogDebug("Received sensor data from {sensorName}: {measurement}", sensorName, measurement);
                     _sensorCollection.PublishSensorData(sensorName, measurement);
                 }
             }

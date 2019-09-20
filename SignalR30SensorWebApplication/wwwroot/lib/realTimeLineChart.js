@@ -1,5 +1,35 @@
 ﻿// https://bl.ocks.org/pjsier/fbf9317b31f070fd540c5523fef167ac
 
+function startRealTimeLineChart(latestSensorData) {
+    const chart = realTimeLineChart();
+    const lineArray = [];
+
+    function updateGraph() {
+        const now = new Date();
+        const lineData = { time: now };
+
+        Object.assign(lineData, latestSensorData);
+        lineArray.push(lineData);
+
+        if (lineArray.length > 30) {
+            lineArray.shift();
+        }
+
+        d3.select("#chart").datum(lineArray).call(chart);
+    }
+
+    function resize() {
+        if (d3.select("#chart svg").empty()) {
+            return;
+        }
+        chart.width(+d3.select("#chart").style("width").replace(/(px)/g, ""));
+        d3.select("#chart").call(chart);
+    }
+
+    window.setInterval(updateGraph, 500);
+    d3.select(window).on('resize', resize);
+}
+
 function realTimeLineChart() {
   var margin = {top: 20, right: 20, bottom: 20, left: 20},
       width = 600,

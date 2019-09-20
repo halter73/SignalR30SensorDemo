@@ -12,7 +12,6 @@
 
         <hr />
         <div id="chart"></div>
-        <ol id="messagesList"></ol>
         <hr />
 
         <footer>
@@ -23,104 +22,44 @@
     <script src="lib/signalr/signalr.js"></script>
     <script src="lib/realTimeLineChart.js"></script>
     <script>
-        const sensorNames = [];
-        const lineArray = [];
-        const latestSensorData = { x: -18, y: -18, z: -18};
-        const chart = realTimeLineChart();
-        let olStart = 0;
-
-        function updateGraph() {
-            const now = new Date();
-            const lineData = { time: now };
-
-            Object.assign(lineData, latestSensorData);
-            lineArray.push(lineData);
-
-            if (lineArray.length > 30) {
-                lineArray.shift();
-            }
-
-            d3.select("#chart").datum(lineArray).call(chart);
-        }
-
-        function addMessage(message) {
-            const li = document.createElement("li");
-            li.textContent = message;
-
-            const ol = document.getElementById("messagesList");
-            ol.appendChild(li);
-
-            while (ol.childElementCount > 10) {
-                ol.removeChild(ol.childNodes[0]);
-                olStart++;
-            }
-
-            ol.setAttribute("start", olStart);
-        }
-
         (async () => {
+            const latestSensorData = { x: 0, y: 0, z: 0 };
+
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/sensors")
                 .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
-            let sensorNames = [];
-
-            connection.onreconnected(async connectionId => {
-                sensorNames = await connection.invoke("GetSensorNames");
-                sensorNames.forEach(addSensor);
-            });
-
-            await connection.start();
-
-            sensorNames = await connection.invoke("GetSensorNames");
-
-            function removeSensor(sensor) {
-                const index = sensorNames.indexOf(sensor);
-                if (index !== -1) {
-                    sensorNames.splice(index, 1);
-                }
-            }
-
-            function addSensor(sensorName) {
+            function subscribeToSensor(sensorName) {
                 connection.stream("GetSensorData", sensorName)
                     .subscribe({
                         next: (item) => {
+                            console.log(`${sensorName}: ${item}`);
                             latestSensorData[sensorName] = item;
-                            addMessage(`${sensorName}: ${item}`);
                         },
                         complete: () => {
-                            addMessage(`${sensorName} Completed`);
-                            removeSensor(sensorName);
+                            console.log(`${sensorName} Completed`);
                         },
                         error: (err) => {
-                            addMessage(`${sensorName} error: "${err}"`);
-                            removeSensor(sensorName);
+                            console.log(`${sensorName} error: "${err}"`);
                         },
                     });
             }
 
-            function tryAddSensor(sensorName) {
-                if (!sensorNames.includes(sensorName)) {
-                    sensorNames.push(sensorName);
-                    addSensor(sensorName);
-                }
-            }
+            connection.onreconnected(async connectionId => {
+                const sensorNames = await connection.invoke("GetSensorNames");
+                sensorNames.forEach(subscribeToSensor);
+            });
 
-            sensorNames.forEach(addSensor);
-            connection.on("SensorAdded", tryAddSensor);
+            await connection.start();
 
-            function resize() {
-                if (d3.select("#chart svg").empty()) {
-                    return;
-                }
-                chart.width(+d3.select("#chart").style("width").replace(/(px)/g, ""));
-                d3.select("#chart").call(chart);
-            }
+            const sensorNames = await connection.invoke("GetSensorNames");
 
-            window.setInterval(updateGraph, 500);
-            d3.select(window).on('resize', resize);
+            sensorNames.forEach(subscribeToSensor);
+            connection.on("SensorAdded", subscribeToSensor);
+
+            startRealTimeLineChart(latestSensorData);
         })();
     </script>
 </body>
