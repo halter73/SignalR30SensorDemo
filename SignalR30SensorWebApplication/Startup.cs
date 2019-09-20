@@ -28,8 +28,7 @@ namespace SignalR30SensorWebApplication
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
+            app.UseFileServer();
 
             app.UseRouting();
 

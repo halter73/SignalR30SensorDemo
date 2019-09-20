@@ -15,7 +15,7 @@ namespace SignalR30SensorClient
             await using var hubConnection = hubConnectionBuilder.Build();
             await hubConnection.StartAsync();
 
-            await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData());
+            await hubConnection.SendAsync("PublishSensorData", args.Length == 0 ? "x" : args[0], GenerateSensorData());
 
             Console.ReadLine();
         }
