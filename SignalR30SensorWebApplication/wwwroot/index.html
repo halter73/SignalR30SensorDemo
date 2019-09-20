@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="container body-content">
-        <h1>SignalR 3.0 Sensor Demo</h1>
+        <h1>SignalR 3.0 Streaming Sensor Demo</h1>
 
         <hr />
         <div id="chart"></div>
@@ -27,7 +27,6 @@
 
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/sensors")
-                .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
@@ -46,11 +45,6 @@
                         },
                     });
             }
-
-            connection.onreconnected(async connectionId => {
-                const sensorNames = await connection.invoke("GetSensorNames");
-                sensorNames.forEach(subscribeToSensor);
-            });
 
             await connection.start();
 
