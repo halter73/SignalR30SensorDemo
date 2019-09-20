@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 
 namespace SignalR30SensorClient
 {
@@ -12,15 +13,23 @@ namespace SignalR30SensorClient
         static async Task Main(string[] args)
         {
             var hubConnectionBuilder = new HubConnectionBuilder()
-                .WithUrl("https://localhost:5001/sensors");
+                .WithUrl("https://localhost:5001/sensors")
+                .WithAutomaticReconnect()
+                .ConfigureLogging(logBuilder =>
+                {
+                    logBuilder.AddConsole();
+                });
 
             await using var hubConnection = hubConnectionBuilder.Build();
+            var cancellationTokenSource = new CancellationTokenSource();
+
+            hubConnection.Reconnected += async connectionId => {
+                await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData(cancellationTokenSource.Token));
+            };
 
             await hubConnection.StartAsync();
 
             Console.WriteLine("Started sensor {0}.", args[0]);
-
-            var cancellationTokenSource = new CancellationTokenSource();
 
             await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData(cancellationTokenSource.Token));
 

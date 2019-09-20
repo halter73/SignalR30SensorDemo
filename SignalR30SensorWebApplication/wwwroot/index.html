@@ -23,6 +23,7 @@
     <script src="lib/signalr/signalr.js"></script>
     <script src="lib/realTimeLineChart.js"></script>
     <script>
+        const sensorNames = [];
         const lineArray = [];
         const latestSensorData = { x: -18, y: -18, z: -18};
         const chart = realTimeLineChart();
@@ -60,12 +61,20 @@
         (async () => {
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/sensors")
+                .withAutomaticReconnect()
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
+            let sensorNames = [];
+
+            connection.onreconnected(async connectionId => {
+                sensorNames = await connection.invoke("GetSensorNames");
+                sensorNames.forEach(addSensor);
+            });
+
             await connection.start();
 
-            const sensorNames = await connection.invoke("GetSensorNames");
+            sensorNames = await connection.invoke("GetSensorNames");
 
             function removeSensor(sensor) {
                 const index = sensorNames.indexOf(sensor);
@@ -92,13 +101,15 @@
                     });
             }
 
-            sensorNames.forEach(addSensor);
-            connection.on("SensorAdded", sensorName => {
+            function tryAddSensor(sensorName) {
                 if (!sensorNames.includes(sensorName)) {
                     sensorNames.push(sensorName);
                     addSensor(sensorName);
                 }
-            });
+            }
+
+            sensorNames.forEach(addSensor);
+            connection.on("SensorAdded", tryAddSensor);
 
             function resize() {
                 if (d3.select("#chart svg").empty()) {
