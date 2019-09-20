@@ -32,11 +32,7 @@
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
-            await connection.start();
-
-            const sensorNames = await connection.invoke("GetSensorNames");
-            
-            sensorNames.forEach(sensorName => {
+            function displaySensorData(sensorName) {
                 connection.stream("GetSensorData", sensorName)
                     .subscribe({
                         next: (item) => {
@@ -49,6 +45,18 @@
                             addMessage(`Error: "${err}"`);
                         },
                     });
+            }
+
+            await connection.start();
+
+            const sensorNames = await connection.invoke("GetSensorNames");
+            
+            sensorNames.forEach(displaySensorData);
+            connection.on("SensorAdded", sensorName => {
+                if (!sensorNames.includes(sensorName)) {
+                    sensorNames.push(sensorName);
+                    displaySensorData(sensorName);
+                }
             });
         })();
     </script>
