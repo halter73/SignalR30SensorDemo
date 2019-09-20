@@ -1,0 +1,175 @@
+public class SensorHub : Hub
+{
+	private readonly SensorCollection _sensorCollection;
+
+	public SensorHub(SensorCollection sensorCollection)
+	{
+		_sensorCollection = sensorCollection;
+	}
+
+	public IEnumerable<string> GetSensorNames()
+	{
+		return _sensorCollection.GetSensorNames();
+	}
+
+	public IAsyncEnumerable<double> GetSensorData(string sensorName, CancellationToken cancellationToken)
+	{
+		return _sensorCollection.GetSensorData(sensorName, cancellationToken);
+	}
+
+	public async Task PublishSensorData(string sensorName, IAsyncEnumerable<double> sensorData)
+	{
+		try
+		{
+			await foreach (var measurement in sensorData)
+			{
+				_sensorCollection.PublishSensorData(sensorName, measurement);
+			}
+		}
+		finally
+		{
+			_sensorCollection.DisconnectSensor(sensorName);
+		}
+	}
+}
+
+class Program
+{
+	static async Task Main(string[] args)
+	{
+		var hubConnectionBuilder = new HubConnectionBuilder()
+			.WithUrl("https://localhost:5001/sensors");
+
+		await using var hubConnection = hubConnectionBuilder.Build();
+		await hubConnection.StartAsync();
+
+		await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData());
+
+		Console.ReadLine();
+	}
+
+	static async IAsyncEnumerable<double> GenerateSensorData()
+	{
+		var rng = new Random();
+
+		while (true)
+		{
+			yield return rng.NextDouble() * 10;
+			await Task.Delay(1000);
+		}
+	}
+}
+
+<script>
+	(async () => {
+		const latestSensorData = { x: 0, y: 0, z: 0 };
+
+		const connection = new signalR.HubConnectionBuilder()
+			.withUrl("/sensors")
+			.configureLogging(signalR.LogLevel.Information)
+			.build();
+
+		function subscribeToSensor(sensorName) {
+			connection.stream("GetSensorData", sensorName)
+				.subscribe({
+					next: (item) => {
+						console.log(`${sensorName}: ${item}`);
+						latestSensorData[sensorName] = item;
+					},
+					complete: () => {
+						console.log(`${sensorName} Completed`);
+					},
+					error: (err) => {
+						console.log(`${sensorName} error: "${err}"`);
+					},
+				});
+		}
+
+		await connection.start();
+
+		const sensorNames = await connection.invoke("GetSensorNames");
+
+		sensorNames.forEach(subscribeToSensor);
+		connection.on("SensorAdded", subscribeToSensor);
+
+		startRealTimeLineChart(latestSensorData);
+	})();
+</script>
+
+
+# With Auto Reconnect
+
+class Program
+{
+	static async Task Main(string[] args)
+	{
+		var hubConnectionBuilder = new HubConnectionBuilder()
+			.WithUrl("https://localhost:5001/sensors")
+			.WithAutomaticReconnect();
+
+		await using var hubConnection = hubConnectionBuilder.Build();
+
+		hubConnection.Reconnected += async connectionId => {
+			await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData());
+		};
+
+		await hubConnection.StartAsync();
+
+		await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData());
+
+		Console.ReadLine();
+	}
+
+	static async IAsyncEnumerable<double> GenerateSensorData()
+	{
+		var rng = new Random();
+
+		while (true)
+		{
+			yield return rng.NextDouble() * 10;
+			await Task.Delay(1000);
+		}
+	}
+}
+
+<script>
+	(async () => {
+		const latestSensorData = { x: 0, y: 0, z: 0 };
+
+		const connection = new signalR.HubConnectionBuilder()
+			.withUrl("/sensors")
+			.withAutomaticReconnect()
+			.configureLogging(signalR.LogLevel.Information)
+			.build();
+
+		function subscribeToSensor(sensorName) {
+			connection.stream("GetSensorData", sensorName)
+				.subscribe({
+					next: (item) => {
+						console.log(`${sensorName}: ${item}`);
+						latestSensorData[sensorName] = item;
+					},
+					complete: () => {
+						console.log(`${sensorName} Completed`);
+					},
+					error: (err) => {
+						console.log(`${sensorName} error: "${err}"`);
+					},
+				});
+		}
+
+		connection.onreconnected(async connectionId => {
+			const sensorNames = await connection.invoke("GetSensorNames");
+			sensorNames.forEach(subscribeToSensor);
+		});
+
+		await connection.start();
+
+		const sensorNames = await connection.invoke("GetSensorNames");
+
+		sensorNames.forEach(subscribeToSensor);
+		connection.on("SensorAdded", subscribeToSensor);
+
+		startRealTimeLineChart(latestSensorData);
+	})();
+</script>
