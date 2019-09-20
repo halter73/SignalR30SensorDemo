@@ -34,7 +34,6 @@
                 connection.stream("GetSensorData", sensorName)
                     .subscribe({
                         next: (item) => {
-                            console.log(`${sensorName}: ${item}`);
                             latestSensorData[sensorName] = item;
                         },
                         complete: () => {
