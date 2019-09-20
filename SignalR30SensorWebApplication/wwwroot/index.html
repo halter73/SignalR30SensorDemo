@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Sensor Dashboard</title>
+    <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container body-content">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h1>SignalR 3.0 Sensor Demo</h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <hr />
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6">&nbsp;</div>
+                <div class="col-6">
+                    <ul id="messagesList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <hr />
+        <footer>
+            <p>&copy; 2018 - SignalR30SensorDemo</p>
+        </footer>
+    </div>
+
+    <!--<div id="plot"></div>-->
+    <script src="lib/signalr/signalr.js"></script>
+    <script>
+        (async function () {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/sensor")
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            await connection.start();
+            console.log("connected");
+
+            connection.stream("GetSensorData", "freezer-thermometer-1")
+                .subscribe({
+                    next: (item) => {
+                        var li = document.createElement("li");
+                        li.textContent = item;
+                        document.getElementById("messagesList").appendChild(li);
+                    },
+                    complete: () => {
+                        var li = document.createElement("li");
+                        li.textContent = "Stream completed";
+                        document.getElementById("messagesList").appendChild(li);
+                    },
+                    error: (err) => {
+                        var li = document.createElement("li");
+                        li.textContent = err;
+                        document.getElementById("messagesList").appendChild(li);
+                    },
+                });
+        })();
+    </script>
+</body>
+</html>
