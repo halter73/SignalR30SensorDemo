@@ -32,30 +32,39 @@
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
-            function displaySensorData(sensorName) {
+            await connection.start();
+
+            const sensorNames = await connection.invoke("GetSensorNames");
+
+            function removeSensor(sensor) {
+                var index = sensorNames.indexOf(sensor);
+                if (index !== -1) {
+                    sensorNames.splice(index, 1);
+                }
+            }
+
+            function addSensor(sensorName) {
                 connection.stream("GetSensorData", sensorName)
                     .subscribe({
                         next: (item) => {
                             addMessage(`${sensorName}: ${item}`);
                         },
                         complete: () => {
-                            addMessage("Stream Completed");
+                            addMessage(`${sensorName} Completed`);
+                            removeSensor(sensorName);
                         },
                         error: (err) => {
-                            addMessage(`Error: "${err}"`);
+                            addMessage(`${sensorName} error: "${err}"`);
+                            removeSensor(sensorName);
                         },
                     });
-            }
-
-            await connection.start();
-
-            const sensorNames = await connection.invoke("GetSensorNames");
+             }
             
-            sensorNames.forEach(displaySensorData);
+            sensorNames.forEach(addSensor);
             connection.on("SensorAdded", sensorName => {
                 if (!sensorNames.includes(sensorName)) {
                     sensorNames.push(sensorName);
-                    displaySensorData(sensorName);
+                    addSensor(sensorName);
                 }
             });
         })();

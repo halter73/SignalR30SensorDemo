@@ -30,10 +30,17 @@ namespace SignalR30SensorWebApplication
 
         public async Task PublishSensorData(string sensorName, IAsyncEnumerable<double> sensorData)
         {
-            await foreach (var measurement in sensorData)
+            try
             {
-                _logger.LogDebug("Received sensor data from {sensorName}: {measurement}", sensorName, measurement);
-                _sensorCollection.PublishSensorData(sensorName, measurement);
+                await foreach (var measurement in sensorData)
+                {
+                    _logger.LogDebug("Received sensor data from {sensorName}: {measurement}", sensorName, measurement);
+                    _sensorCollection.PublishSensorData(sensorName, measurement);
+                }
+            }
+            finally
+            {
+                _sensorCollection.DisconnectSensor(sensorName);
             }
         }
     }

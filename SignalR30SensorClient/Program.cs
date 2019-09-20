@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -14,26 +16,28 @@ namespace SignalR30SensorClient
 
             await using var hubConnection = hubConnectionBuilder.Build();
 
-            Console.WriteLine("Starting connection.");
-
             await hubConnection.StartAsync();
 
-            Console.WriteLine("Connection started.");
+            Console.WriteLine("Started sensor {0}.", args[0]);
 
-            await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData());
+            var cancellationTokenSource = new CancellationTokenSource();
 
-            Console.WriteLine("PublishSensorData sent.");
+            await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData(cancellationTokenSource.Token));
+
+            Console.ReadLine();
+
+            cancellationTokenSource.Cancel();
 
             Console.ReadLine();
         }
 
-        static async IAsyncEnumerable<double> GenerateSensorData()
+        static async IAsyncEnumerable<double> GenerateSensorData([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var rng = new Random();
             double currentTemp = -18;
             double tempVelocity = 0.5;
 
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 tempVelocity += (rng.NextDouble() - .5) / 4;
                 tempVelocity = Math.Clamp(tempVelocity, -2, 2);
@@ -51,7 +55,7 @@ namespace SignalR30SensorClient
 
                 yield return currentTemp;
 
-                await Task.Delay(1000);
+                await Task.Delay(1000, cancellationToken);
             }
         }
     }

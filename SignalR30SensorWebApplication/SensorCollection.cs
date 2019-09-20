@@ -38,6 +38,19 @@ namespace SignalR30SensorWebApplication
             }
         }
 
+        public void DisconnectSensor(string sensorName)
+        {
+            if (!_sensors.TryRemove(sensorName, out var subscriberQueue))
+            {
+                return;
+            }
+
+            foreach (var subscriber in subscriberQueue)
+            {
+                subscriber.Writer.Complete();
+            }
+        }
+
         public IAsyncEnumerable<double> GetSensorData(string sensorName, CancellationToken cancellationToken = default)
         {
             var subscriberQueue = _sensors.GetOrAdd(sensorName, _ => new ConcurrentQueue<Channel<double>>());
