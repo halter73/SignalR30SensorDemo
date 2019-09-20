@@ -7,61 +7,49 @@
 </head>
 <body>
     <div class="container body-content">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <h1>SignalR 3.0 Sensor Demo</h1>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-12">
-                    <hr />
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-6">&nbsp;</div>
-                <div class="col-6">
-                    <ul id="messagesList"></ul>
-                </div>
-            </div>
-        </div>
+        <h1>SignalR 3.0 Sensor Demo</h1>
 
         <hr />
+        <ul id="messagesList"></ul>
+        <hr />
+
         <footer>
             <p>&copy; 2018 - SignalR30SensorDemo</p>
         </footer>
     </div>
 
-    <!--<div id="plot"></div>-->
     <script src="lib/signalr/signalr.js"></script>
     <script>
-        (async function () {
+        function addMessage(message) {
+            var li = document.createElement("li");
+            li.textContent = message;
+            document.getElementById("messagesList").appendChild(li);
+        }
+
+        (async () => {
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/sensors")
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
             await connection.start();
-            console.log("connected");
 
-            connection.stream("GetSensorData", "freezer-thermometer-1")
-                .subscribe({
-                    next: (item) => {
-                        var li = document.createElement("li");
-                        li.textContent = item;
-                        document.getElementById("messagesList").appendChild(li);
-                    },
-                    complete: () => {
-                        var li = document.createElement("li");
-                        li.textContent = "Stream completed";
-                        document.getElementById("messagesList").appendChild(li);
-                    },
-                    error: (err) => {
-                        var li = document.createElement("li");
-                        li.textContent = err;
-                        document.getElementById("messagesList").appendChild(li);
-                    },
-                });
+            const sensorNames = await connection.invoke("GetSensorNames");
+            
+            sensorNames.forEach(sensorName => {
+                connection.stream("GetSensorData", sensorName)
+                    .subscribe({
+                        next: (item) => {
+                            addMessage(`${sensorName}: ${item}`);
+                        },
+                        complete: () => {
+                            addMessage("Stream Completed");
+                        },
+                        error: (err) => {
+                            addMessage(`Error: "${err}"`);
+                        },
+                    });
+            });
         })();
     </script>
 </body>

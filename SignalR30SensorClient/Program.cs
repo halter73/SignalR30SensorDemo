@@ -20,7 +20,7 @@ namespace SignalR30SensorClient
 
             Console.WriteLine("Connection started.");
 
-            await hubConnection.SendAsync("PublishSensorData", "freezer-thermometer-1", GenerateSensorData());
+            await hubConnection.SendAsync("PublishSensorData", args[0], GenerateSensorData());
 
             Console.WriteLine("PublishSensorData sent.");
 
