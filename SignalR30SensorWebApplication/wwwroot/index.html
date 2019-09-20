@@ -4,13 +4,15 @@
     <meta charset="utf-8" />
     <title>Sensor Dashboard</title>
     <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
 </head>
 <body>
     <div class="container body-content">
         <h1>SignalR 3.0 Sensor Demo</h1>
 
         <hr />
-        <ul id="messagesList"></ul>
+        <div id="chart"></div>
+        <ol id="messagesList"></ol>
         <hr />
 
         <footer>
@@ -19,11 +21,40 @@
     </div>
 
     <script src="lib/signalr/signalr.js"></script>
+    <script src="lib/realTimeLineChart.js"></script>
     <script>
+        const lineArray = [];
+        const latestSensorData = { x: -18, y: -18, z: -18};
+        const chart = realTimeLineChart();
+        let olStart = 0;
+
+        function updateGraph() {
+            const now = new Date();
+            const lineData = { time: now };
+
+            Object.assign(lineData, latestSensorData);
+            lineArray.push(lineData);
+
+            if (lineArray.length > 30) {
+                lineArray.shift();
+            }
+
+            d3.select("#chart").datum(lineArray).call(chart);
+        }
+
         function addMessage(message) {
-            var li = document.createElement("li");
+            const li = document.createElement("li");
             li.textContent = message;
-            document.getElementById("messagesList").appendChild(li);
+
+            const ol = document.getElementById("messagesList");
+            ol.appendChild(li);
+
+            while (ol.childElementCount > 10) {
+                ol.removeChild(ol.childNodes[0]);
+                olStart++;
+            }
+
+            ol.setAttribute("start", olStart);
         }
 
         (async () => {
@@ -37,7 +68,7 @@
             const sensorNames = await connection.invoke("GetSensorNames");
 
             function removeSensor(sensor) {
-                var index = sensorNames.indexOf(sensor);
+                const index = sensorNames.indexOf(sensor);
                 if (index !== -1) {
                     sensorNames.splice(index, 1);
                 }
@@ -47,6 +78,7 @@
                 connection.stream("GetSensorData", sensorName)
                     .subscribe({
                         next: (item) => {
+                            latestSensorData[sensorName] = item;
                             addMessage(`${sensorName}: ${item}`);
                         },
                         complete: () => {
@@ -58,8 +90,8 @@
                             removeSensor(sensorName);
                         },
                     });
-             }
-            
+            }
+
             sensorNames.forEach(addSensor);
             connection.on("SensorAdded", sensorName => {
                 if (!sensorNames.includes(sensorName)) {
@@ -67,6 +99,17 @@
                     addSensor(sensorName);
                 }
             });
+
+            function resize() {
+                if (d3.select("#chart svg").empty()) {
+                    return;
+                }
+                chart.width(+d3.select("#chart").style("width").replace(/(px)/g, ""));
+                d3.select("#chart").call(chart);
+            }
+
+            window.setInterval(updateGraph, 500);
+            d3.select(window).on('resize', resize);
         })();
     </script>
 </body>
