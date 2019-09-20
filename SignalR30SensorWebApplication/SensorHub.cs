@@ -8,32 +8,16 @@ namespace SignalR30SensorWebApplication
 {
     public class SensorHub : Hub
     {
-        public async IAsyncEnumerable<double> GetSensorData(string sensorName, CancellationToken cancellationToken)
+        private readonly SensorCollection _sensorCollection;
+
+        public SensorHub(SensorCollection sensorCollection)
         {
-            var rng = new Random();
-            double currentTemp = -18;
-            double tempVelocity = 0.5;
+            _sensorCollection = sensorCollection;
+        }
 
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                tempVelocity += (rng.NextDouble() - .5) / 4;
-                tempVelocity = Math.Clamp(tempVelocity, -2, 2);
-
-                currentTemp += tempVelocity;
-
-                if (currentTemp < -30)
-                {
-                    tempVelocity = .5; 
-                }
-                else if(currentTemp > 0)
-                {
-                    tempVelocity = -.5;
-                }
-
-                yield return currentTemp;
-
-                await Task.Delay(1000, cancellationToken);
-            }
+        public IAsyncEnumerable<double> GetSensorData(string sensorName, CancellationToken cancellationToken)
+        {
+            return _sensorCollection.GetSensorData(sensorName, cancellationToken);
         }
 
         public async Task PublishSensorData(string sensorName, IAsyncEnumerable<double> sensorData)
@@ -41,6 +25,7 @@ namespace SignalR30SensorWebApplication
             await foreach (var measurement in sensorData)
             {
                 Console.WriteLine("Received sensor data: {0}", measurement);
+                _sensorCollection.PublishSensorData(sensorName, measurement);
             }
         }
     }
