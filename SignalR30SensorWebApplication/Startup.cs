@@ -34,7 +34,7 @@ namespace SignalR30SensorWebApplication
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHub<SensorHub>("/sensor");
+                endpoints.MapHub<SensorHub>("/sensors");
             });
         }
     }

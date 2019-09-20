@@ -35,5 +35,13 @@ namespace SignalR30SensorWebApplication
                 await Task.Delay(1000, cancellationToken);
             }
         }
+
+        public async Task PublishSensorData(string sensorName, IAsyncEnumerable<double> sensorData)
+        {
+            await foreach (var measurement in sensorData)
+            {
+                Console.WriteLine("Received sensor data: {0}", measurement);
+            }
+        }
     }
 }

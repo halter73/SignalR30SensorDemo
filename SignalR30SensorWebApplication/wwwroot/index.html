@@ -37,7 +37,7 @@
     <script>
         (async function () {
             const connection = new signalR.HubConnectionBuilder()
-                .withUrl("/sensor")
+                .withUrl("/sensors")
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
 
